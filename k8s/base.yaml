@@ -1,0 +1,79 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ddac 
+  labels:
+    name: ddac 
+spec:
+  ports:
+  - name: webhook
+    port: 443
+    targetPort: 443
+  selector:
+    app: ddac 
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ddac
+  labels:
+    app: ddac
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ddac
+  template:
+    metadata:
+      labels:
+        app: ddac
+    spec:
+      containers:
+        - name: controller
+          image: k0da/ddac:v1
+          imagePullPolicy: IfNotPresent 
+          args:
+            - -tlsCertFile=/etc/webhook/certs/cert.pem
+            - -tlsKeyFile=/etc/webhook/certs/key.pem
+            - -alsologtostderr
+            - -v=4
+          volumeMounts:
+            - name: certs
+              mountPath: /etc/webhook/certs
+              readOnly: true
+      volumes:
+        - name: certs
+          secret:
+            secretName: webhook-certs
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: ddac-sa
+  labels:
+    app: ddac 
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: MutatingWebhookConfiguration
+metadata:
+  name: mutating-webhook-config
+  labels:
+    app: ddac 
+webhooks:
+  - name: ddac-hook-demo.foo.bar 
+    sideEffects: None
+    admissionReviewVersions: ["v1"]
+    clientConfig:
+      service:
+        name: ddac 
+        namespace: ddac
+        path: "/mutate"
+    rules:
+      - operations: [ "CREATE" ]
+        apiGroups: ["apps", ""]
+        apiVersions: ["v1"]
+        resources: ["pods"]
+    namespaceSelector:
+      matchLabels:
+        ddac: "true" 
