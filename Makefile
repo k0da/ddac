@@ -37,7 +37,7 @@ deploy: deps create-cluster genkeys patchca
 	${info ############ DEPLOY ###############################}
 	kustomize build k8s | kubectl apply -n ddac -f -
 	sleep 2
-	kubectl wait --for=condition=ready pod -l app=ddac -n ddac --timeout 30s
+	kubectl wait --for=condition=ready pod -l app=ddac -n ddac --timeout 120s
 test: deploy
 	${info ############ TEST #################################}
 	kubectl create ns test
